@@ -111,10 +111,18 @@ def run_flask():
     app.run(host='0.0.0.0', port=port)
 
 def main():
-    print("=== LinkedIn Lead Gen Bot (24/7 Cloud Mode) ===")
+    # Force unbuffered output
+    sys.stdout.reconfigure(line_buffering=True)
+    print("=== LinkedIn Lead Gen Bot (24/7 Cloud Mode) ===", flush=True)
     
     # Start dummy web server for Render
     threading.Thread(target=run_flask, daemon=True).start()
+    
+    # Send startup message
+    try:
+        requests.get(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage?chat_id={TELEGRAM_CHAT_ID}&text=🚀 Bot Started on Render!")
+    except:
+        pass
     
     if len(sys.argv) > 1 and sys.argv[1] == "--once":
         run_cycle()
@@ -124,7 +132,7 @@ def main():
         run_cycle()
         
         # Sleep for 4 hours (14400 seconds)
-        print("Sleeping for 4 hours...")
+        print("Sleeping for 4 hours...", flush=True)
         time.sleep(14400)
 
 if __name__ == "__main__":
