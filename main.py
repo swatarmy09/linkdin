@@ -5,6 +5,7 @@ from telegram_notifier import TelegramNotifier
 import time
 import os
 import sys
+import requests
 
 # CONFIGURATION
 # ==========================================
@@ -56,7 +57,13 @@ def process_leads(bot, analyzer, notifier, leads):
     return results
 
 def run_cycle():
-    print(f"--- Starting Cycle at {time.ctime()} ---")
+    print(f"--- Starting Cycle at {time.ctime()} ---", flush=True)
+    
+    # Send cycle start message
+    try:
+        requests.get(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage?chat_id={TELEGRAM_CHAT_ID}&text=🔄 New Search Cycle Started at {time.strftime('%H:%M:%S')}")
+    except:
+        pass
     
     # Force headless in production/loop mode
     bot = LinkedInBot(headless=True)
@@ -70,25 +77,44 @@ def run_cycle():
         
         all_results = []
         
-        print("\n--- Phase 1: Searching INDIA (Targeting ~40%) ---")
+        print("\n--- Phase 1: Searching INDIA (Targeting ~40%) ---", flush=True)
         leads_india = bot.search_leads("Founder New Startup", location_filter="India", pages=1)
-        print(f"Found {len(leads_india)} leads in India.")
+        print(f"Found {len(leads_india)} leads in India.", flush=True)
+        
+        # Send update
+        try:
+            requests.get(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage?chat_id={TELEGRAM_CHAT_ID}&text=🇮🇳 Found {len(leads_india)} profiles in India. Checking websites...")
+        except:
+            pass
+            
         results_india = process_leads(bot, analyzer, notifier, leads_india)
         all_results.extend(results_india)
         
-        print("\n--- Phase 2: Searching GLOBAL (Targeting ~60%) ---")
+        print("\n--- Phase 2: Searching GLOBAL (Targeting ~60%) ---", flush=True)
         leads_global = bot.search_leads("Founder New Startup", location_filter="Global", pages=1)
-        print(f"Found {len(leads_global)} leads Globally.")
+        print(f"Found {len(leads_global)} leads Globally.", flush=True)
+        
+        # Send update
+        try:
+            requests.get(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage?chat_id={TELEGRAM_CHAT_ID}&text=🌍 Found {len(leads_global)} profiles Globally. Checking websites...")
+        except:
+            pass
+            
         results_global = process_leads(bot, analyzer, notifier, leads_global)
         all_results.extend(results_global)
             
         if all_results:
-            print(f"Cycle complete. Found {len(all_results)} leads.")
+            print(f"Cycle complete. Found {len(all_results)} leads.", flush=True)
+            # Send completion message
+            try:
+                requests.get(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage?chat_id={TELEGRAM_CHAT_ID}&text=✅ Cycle Complete! Checked {len(all_results)} total profiles.")
+            except:
+                pass
         else:
-            print("Cycle complete. No leads found.")
+            print("Cycle complete. No leads found.", flush=True)
             
     except Exception as e:
-        print(f"An error occurred during cycle: {e}")
+        print(f"An error occurred during cycle: {e}", flush=True)
         # Send error to Telegram so user knows it crashed
         try:
             requests.get(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage?chat_id={TELEGRAM_CHAT_ID}&text=⚠️ Bot Error: {str(e)}")
