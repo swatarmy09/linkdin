@@ -71,13 +71,39 @@ def run_cycle():
     notifier = TelegramNotifier(TELEGRAM_TOKEN, TELEGRAM_CHAT_ID)
     
     try:
+        # Send browser launch message
+        try:
+            requests.get(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage?chat_id={TELEGRAM_CHAT_ID}&text=🌐 Launching browser...")
+        except:
+            pass
+            
         # Pass cookies from env var if available
         bot.start(auth_content=LINKEDIN_COOKIES)
+        
+        # Send login message
+        try:
+            requests.get(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage?chat_id={TELEGRAM_CHAT_ID}&text=🔐 Logging into LinkedIn...")
+        except:
+            pass
+            
         bot.login()
+        
+        # Send login success
+        try:
+            requests.get(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage?chat_id={TELEGRAM_CHAT_ID}&text=✅ LinkedIn Login Successful!")
+        except:
+            pass
         
         all_results = []
         
         print("\n--- Phase 1: Searching INDIA (Targeting ~40%) ---", flush=True)
+        
+        # Send search start message
+        try:
+            requests.get(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage?chat_id={TELEGRAM_CHAT_ID}&text=🔍 Searching for 'Founder New Startup' in India...")
+        except:
+            pass
+            
         leads_india = bot.search_leads("Founder New Startup", location_filter="India", pages=1)
         print(f"Found {len(leads_india)} leads in India.", flush=True)
         
@@ -91,6 +117,13 @@ def run_cycle():
         all_results.extend(results_india)
         
         print("\n--- Phase 2: Searching GLOBAL (Targeting ~60%) ---", flush=True)
+        
+        # Send search start message
+        try:
+            requests.get(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage?chat_id={TELEGRAM_CHAT_ID}&text=🔍 Searching for 'Founder New Startup' Globally...")
+        except:
+            pass
+            
         leads_global = bot.search_leads("Founder New Startup", location_filter="Global", pages=1)
         print(f"Found {len(leads_global)} leads Globally.", flush=True)
         
@@ -122,6 +155,11 @@ def run_cycle():
             pass
     finally:
         bot.close()
+        # Send browser close message
+        try:
+            requests.get(f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage?chat_id={TELEGRAM_CHAT_ID}&text=🔴 Browser closed. Waiting 4 hours for next cycle...")
+        except:
+            pass
 
 import threading
 from flask import Flask
