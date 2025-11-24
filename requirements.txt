@@ -1,6 +1,7 @@
+flask
+gunicorn
 playwright
 pandas
 beautifulsoup4
 requests
 openpyxl
-flask
