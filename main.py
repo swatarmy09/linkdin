@@ -11,7 +11,7 @@ import requests
 # ==========================================
 # These will be overridden by Environment Variables if present
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8495081207:AAF1e5J8ki_y8WUrsQKLIPmfvy896HrnROw")
-TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "8495081207")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "-1003210356607")
 LINKEDIN_COOKIES = os.environ.get("LINKEDIN_COOKIES", None) # JSON string of cookies
 # ==========================================
 
