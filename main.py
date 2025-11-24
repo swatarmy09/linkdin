@@ -14,8 +14,6 @@ import requests
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8495081207:AAF1e5J8ki_y8WUrsQKLIPmfvy896HrnROw")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "-1003210356607")
 LINKEDIN_COOKIES = os.environ.get("LINKEDIN_COOKIES", None) # JSON string of cookies
-LINKEDIN_EMAIL = os.environ.get("LINKEDIN_EMAIL", None)
-LINKEDIN_PASSWORD = os.environ.get("LINKEDIN_PASSWORD", None)
 # ==========================================
 
 # Global state

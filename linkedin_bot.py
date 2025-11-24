@@ -33,67 +33,29 @@ class LinkedInBot:
 
     def login(self):
         """
-        Navigates to LinkedIn. Uses email/password if provided, otherwise waits for manual login.
+        Navigates to LinkedIn using cookie-based authentication.
         """
         print("Navigating to LinkedIn...", flush=True)
         
-        # Check if email and password are provided
-        linkedin_email = os.environ.get("LINKEDIN_EMAIL")
-        linkedin_password = os.environ.get("LINKEDIN_PASSWORD")
+        # Go to LinkedIn homepage
+        self.page.goto("https://www.linkedin.com/")
+        time.sleep(random.uniform(2, 3))
         
-        if linkedin_email and linkedin_password:
-            print("Attempting automated login with email/password...", flush=True)
-            try:
-                self.page.goto("https://www.linkedin.com/login")
-                time.sleep(random.uniform(2, 3))
-                
-                # Fill email
-                self.page.fill("#username", linkedin_email)
-                time.sleep(random.uniform(0.5, 1))
-                
-                # Fill password
-                self.page.fill("#password", linkedin_password)
-                time.sleep(random.uniform(0.5, 1))
-                
-                # Click login button
-                self.page.click("button[type='submit']")
-                time.sleep(random.uniform(3, 5))
-                
-                # Check if login was successful
-                try:
-                    self.page.wait_for_selector(".global-nav__content", timeout=10000)
-                    print("Automated login successful!", flush=True)
-                    
-                    # Save state for future use
-                    print("Saving authentication state...", flush=True)
-                    self.context.storage_state(path=self.auth_file)
-                    return
-                except:
-                    print("Login may have failed or requires 2FA. Checking...", flush=True)
-                    # Check if we're on feed page anyway
-                    if "feed" in self.page.url or "mynetwork" in self.page.url:
-                        print("Login successful (alternative check)!", flush=True)
-                        self.context.storage_state(path=self.auth_file)
-                        return
-                    else:
-                        print("Automated login failed. May need manual intervention.", flush=True)
-                        raise Exception("Automated login failed")
-                        
-            except Exception as e:
-                print(f"Error during automated login: {e}", flush=True)
-                raise
-        else:
-            # Fallback to manual login (won't work on Render)
-            print("No credentials provided. Attempting cookie-based login...", flush=True)
-            self.page.goto("https://www.linkedin.com/")
+        # Check if already logged in
+        try:
+            self.page.wait_for_selector(".global-nav__content", timeout=5000)
+            print("Already logged in via cookies!", flush=True)
             
-            # Check if logged in by looking for specific element
+            # Save state for future use
             try:
-                self.page.wait_for_selector(".global-nav__content", timeout=5000)
-                print("Already logged in via cookies!", flush=True)
+                self.context.storage_state(path=self.auth_file)
+                print("Authentication state saved.", flush=True)
             except:
-                print("Not logged in. Please provide LINKEDIN_EMAIL and LINKEDIN_PASSWORD environment variables.", flush=True)
-                raise Exception("Login credentials required")
+                pass
+                
+        except:
+            print("Not logged in. Cookies may be invalid or expired.", flush=True)
+            raise Exception("Login failed. Please update LINKEDIN_COOKIES environment variable.")
 
     def search_leads(self, keyword, location_filter=None, pages=1):
         """
