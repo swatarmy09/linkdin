@@ -1,5 +1,6 @@
 import pandas as pd
 from producthunt_bot import ProductHuntBot
+from crunchbase_bot import CrunchbaseBot
 from website_analyzer import WebsiteAnalyzer
 from telegram_notifier import TelegramNotifier
 from telegram_bot import TelegramBot
@@ -15,6 +16,8 @@ from flask import Flask
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8495081207:AAF1e5J8ki_y8WUrsQKLIPmfvy896HrnROw")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "-1003210356607")
 PRODUCTHUNT_COOKIES = os.environ.get("PRODUCTHUNT_COOKIES", None)
+CRUNCHBASE_COOKIES = os.environ.get("CRUNCHBASE_COOKIES", None)  # Optional
+USE_CRUNCHBASE = os.environ.get("USE_CRUNCHBASE", "true").lower() == "true"  # Enable/disable
 # ==========================================
 
 # Global state
@@ -26,7 +29,7 @@ bot_state = {
     "force_run": False
 }
 
-def process_products(bot, analyzer, notifier, products):
+def process_products(bot, cb_bot, analyzer, notifier, products):
     """Process Product Hunt launches and identify leads"""
     results = []
     
@@ -52,8 +55,37 @@ def process_products(bot, analyzer, notifier, products):
             'email': details.get('email'),
             'website_status': 'N/A',
             'website_score': 0,
-            'website_notes': ''
+            'website_notes': '',
+            # Crunchbase data (optional)
+            'crunchbase_url': None,
+            'funding': None,
+            'employees': None,
+            'location': None,
+            'founded': None,
+            'company_phone': None,
+            'company_email': None,
+            'company_linkedin': None
         }
+        
+        # Try to enrich with Crunchbase data (optional, non-blocking)
+        if cb_bot:
+            try:
+                print(f"  Checking Crunchbase...", flush=True)
+                cb_url = cb_bot.search_company(details['name'])
+                if cb_url:
+                    cb_details = cb_bot.get_company_details(cb_url)
+                    if cb_details:
+                        lead_data['crunchbase_url'] = cb_details.get('crunchbase_url')
+                        lead_data['funding'] = cb_details.get('funding')
+                        lead_data['employees'] = cb_details.get('employees')
+                        lead_data['location'] = cb_details.get('location')
+                        lead_data['founded'] = cb_details.get('founded')
+                        lead_data['company_phone'] = cb_details.get('phone')
+                        lead_data['company_email'] = cb_details.get('email')
+                        lead_data['company_linkedin'] = cb_details.get('linkedin')
+                        print(f"  ✅ Crunchbase data added!", flush=True)
+            except Exception as e:
+                print(f"  ⚠️ Crunchbase lookup failed (non-critical): {e}", flush=True)
         
         is_target = False
         
@@ -109,17 +141,46 @@ def process_products(bot, analyzer, notifier, products):
             
             social_text = "\n".join(social_links) if social_links else "No social links found"
             
+            # Build Crunchbase section (if data available)
+            crunchbase_section = ""
+            if lead_data.get('crunchbase_url'):
+                crunchbase_section = f"""
+**🏢 Company Info (Crunchbase):**
+Crunchbase: {lead_data['crunchbase_url']}"""
+                if lead_data.get('funding'):
+                    crunchbase_section += f"\nFunding: {lead_data['funding']}"
+                if lead_data.get('employees'):
+                    crunchbase_section += f"\nEmployees: {lead_data['employees']}"
+                if lead_data.get('location'):
+                    crunchbase_section += f"\nLocation: {lead_data['location']}"
+                if lead_data.get('founded'):
+                    crunchbase_section += f"\nFounded: {lead_data['founded']}"
+                
+                # Company contact
+                company_contact = []
+                if lead_data.get('company_phone'):
+                    company_contact.append(f"📞 Phone: {lead_data['company_phone']}")
+                if lead_data.get('company_email'):
+                    company_contact.append(f"📧 Email: {lead_data['company_email']}")
+                if lead_data.get('company_linkedin'):
+                    company_contact.append(f"🔗 LinkedIn: {lead_data['company_linkedin']}")
+                
+                if company_contact:
+                    crunchbase_section += "\n\n**📞 Company Contact:**\n" + "\n".join(company_contact)
+                
+                crunchbase_section += "\n"
+            
             # Format message for Telegram
             message = f"""
-🚀 **NEW LEAD - Product Hunt**
+🚀 **NEW LEAD - Startup Founder**
 
 **Product:** {lead_data['name']}
 **Tagline:** {lead_data['tagline']}
 **Product Hunt:** {lead_data['product_url']}
 
-**📱 Product Social Links:**
+**📱 Product Social:**
 {social_text}
-
+{crunchbase_section}
 **👥 Founders/Makers:**{makers_text}
 
 **🌐 Website Analysis:**
@@ -129,7 +190,7 @@ def process_products(bot, analyzer, notifier, products):
 **Notes:** {lead_data['website_notes'] or 'No website - perfect opportunity to offer your services!'}
 
 ---
-💡 **Action:** Contact the makers and offer website development services!
+💡 **Action:** Contact founders and offer website/app development services!
 """
             notifier.send_message(message)
             time.sleep(1)
@@ -157,6 +218,9 @@ def run_cycle():
     )
     
     ph_bot = ProductHuntBot(headless=True)
+    cb_bot = None
+    if USE_CRUNCHBASE:
+        cb_bot = CrunchbaseBot(headless=True)
     analyzer = WebsiteAnalyzer()
     notifier = TelegramNotifier(TELEGRAM_TOKEN, TELEGRAM_CHAT_ID)
     
@@ -164,12 +228,16 @@ def run_cycle():
         telegram_bot.send_message("🌐 Launching browser...")
         ph_bot.start(auth_content=PRODUCTHUNT_COOKIES)
         
+        if cb_bot:
+            telegram_bot.send_message("🏢 Starting Crunchbase enrichment...")
+            cb_bot.start(auth_content=CRUNCHBASE_COOKIES)
+        
         telegram_bot.send_message("🔍 Scraping Product Hunt launches...")
         products = ph_bot.get_daily_launches()
         print(f"Found {len(products)} products.", flush=True)
         
         telegram_bot.send_message(f"🎯 Found {len(products)} products. Analyzing websites...")
-        results = process_products(ph_bot, analyzer, notifier, products)
+        results = process_products(ph_bot, cb_bot, analyzer, notifier, products)
         
         target_leads = [r for r in results if r.get('website_status') in ['No Website', 'Bad', 'Potentially Bad']]
         bot_state['total_leads_found'] += len(target_leads)
@@ -191,6 +259,8 @@ def run_cycle():
         telegram_bot.send_message(f"⚠️ *Bot Error in Cycle #{bot_state['total_cycles']}*\n\n`{str(e)}`")
     finally:
         ph_bot.close()
+        if cb_bot:
+            cb_bot.close()
         telegram_bot.send_message("🔴 Browser closed. Waiting 4 hours for next cycle...")
 
 app = Flask(__name__)
