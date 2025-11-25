@@ -33,111 +33,32 @@ class LinkedInBot:
 
     def login(self):
         """
-        Navigates to LinkedIn using email/password authentication.
-        Falls back to cookies if credentials not provided.
+        Navigates to LinkedIn using cookie-based authentication only.
+        Cookies must be provided via LINKEDIN_COOKIES environment variable.
         """
-        print("Navigating to LinkedIn...", flush=True)
+        print("Logging into LinkedIn...", flush=True)
         
-        # Check for email and password
-        linkedin_email = os.environ.get("LINKEDIN_EMAIL")
-        linkedin_password = os.environ.get("LINKEDIN_PASSWORD")
+        # Go to LinkedIn homepage
+        self.page.goto("https://www.linkedin.com/", wait_until="domcontentloaded")
+        time.sleep(random.uniform(2, 4))
         
-        if linkedin_email and linkedin_password:
-            print("Attempting login with email/password...", flush=True)
+        # Check if logged in successfully
+        try:
+            self.page.wait_for_selector(".global-nav__content", timeout=10000)
+            print("✅ Successfully logged in via cookies!", flush=True)
             
+            # Save session state for future use
             try:
-                # Go to login page
-                self.page.goto("https://www.linkedin.com/login", wait_until="domcontentloaded")
-                time.sleep(random.uniform(2, 4))
-                
-                # Type email slowly (human-like)
-                print("Entering email...", flush=True)
-                email_field = self.page.locator("#username")
-                email_field.click()
-                time.sleep(random.uniform(0.3, 0.7))
-                
-                for char in linkedin_email:
-                    email_field.type(char, delay=random.uniform(50, 150))
-                
-                time.sleep(random.uniform(0.5, 1.5))
-                
-                # Type password slowly
-                print("Entering password...", flush=True)
-                password_field = self.page.locator("#password")
-                password_field.click()
-                time.sleep(random.uniform(0.3, 0.7))
-                
-                for char in linkedin_password:
-                    password_field.type(char, delay=random.uniform(50, 150))
-                
-                time.sleep(random.uniform(1, 2))
-                
-                # Click sign in button
-                print("Clicking sign in...", flush=True)
-                self.page.click("button[type='submit']")
-                
-                # Wait for navigation
-                time.sleep(random.uniform(5, 8))
-                
-                # Check for various post-login scenarios
-                current_url = self.page.url
-                
-                # Check if CAPTCHA appeared
-                if "checkpoint/challenge" in current_url or self.page.query_selector("iframe[title*='recaptcha']"):
-                    print("⚠️ CAPTCHA detected! LinkedIn requires verification.", flush=True)
-                    print("This usually happens with new IPs or suspicious activity.", flush=True)
-                    raise Exception("CAPTCHA challenge detected. Cannot proceed automatically.")
-                
-                # Check if 2FA/verification required
-                if "checkpoint" in current_url or "challenge" in current_url:
-                    print("⚠️ LinkedIn requires additional verification (2FA/Phone).", flush=True)
-                    print("Please disable 2FA or use cookie-based login.", flush=True)
-                    raise Exception("Additional verification required. Use cookies instead.")
-                
-                # Check if login successful
-                if "feed" in current_url or "mynetwork" in current_url or self.page.query_selector(".global-nav__content"):
-                    print("✅ Login successful!", flush=True)
-                    
-                    # Save cookies for future use
-                    try:
-                        self.context.storage_state(path=self.auth_file)
-                        print("Session saved for future use.", flush=True)
-                    except:
-                        pass
-                    
-                    return
-                
-                # If we're still on login page, something went wrong
-                if "login" in current_url:
-                    print("❌ Login failed. Check credentials.", flush=True)
-                    raise Exception("Login failed. Invalid email or password.")
-                
-                # Unknown state
-                print(f"Current URL: {current_url}", flush=True)
-                raise Exception("Login status unclear. Manual verification needed.")
-                
+                self.context.storage_state(path=self.auth_file)
+                print("Session state saved.", flush=True)
             except Exception as e:
-                print(f"Login error: {e}", flush=True)
-                raise
-        
-        else:
-            # Cookie-based login
-            print("No credentials provided. Using cookie-based login...", flush=True)
-            self.page.goto("https://www.linkedin.com/")
-            time.sleep(random.uniform(2, 3))
-            
-            try:
-                self.page.wait_for_selector(".global-nav__content", timeout=5000)
-                print("✅ Logged in via cookies!", flush=True)
+                print(f"Warning: Could not save session state: {e}", flush=True)
                 
-                try:
-                    self.context.storage_state(path=self.auth_file)
-                except:
-                    pass
-                    
-            except:
-                print("❌ Login failed. Please provide LINKEDIN_EMAIL and LINKEDIN_PASSWORD or valid LINKEDIN_COOKIES.", flush=True)
-                raise Exception("Authentication required.")
+        except Exception as e:
+            print("❌ Login failed!", flush=True)
+            print("Please ensure LINKEDIN_COOKIES environment variable is set correctly.", flush=True)
+            print(f"Error: {e}", flush=True)
+            raise Exception("Cookie-based authentication failed. Please update LINKEDIN_COOKIES.")
 
     def search_leads(self, keyword, location_filter=None, pages=1):
         """
