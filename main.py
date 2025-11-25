@@ -17,7 +17,7 @@ TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "8495081207:AAF1e5J8ki_y8WUrsQ
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "-1003210356607")
 PRODUCTHUNT_COOKIES = os.environ.get("PRODUCTHUNT_COOKIES", None)
 CRUNCHBASE_COOKIES = os.environ.get("CRUNCHBASE_COOKIES", None)  # Optional
-USE_CRUNCHBASE = os.environ.get("USE_CRUNCHBASE", "true").lower() == "true"  # Enable/disable
+USE_CRUNCHBASE = os.environ.get("USE_CRUNCHBASE", "false").lower() == "true"  # Disabled by default (set to "true" to enable)
 # ==========================================
 
 # Global state
