@@ -44,8 +44,12 @@ def process_products(bot, analyzer, notifier, products):
             'tagline': product.get('tagline', ''),
             'product_url': details['url'],
             'website': details.get('website'),
-            'makers': ', '.join([m['name'] for m in details.get('makers', [])]),
+            'makers': details.get('makers', []),
             'twitter': details.get('twitter'),
+            'linkedin': details.get('linkedin'),
+            'facebook': details.get('facebook'),
+            'instagram': details.get('instagram'),
+            'email': details.get('email'),
             'website_status': 'N/A',
             'website_score': 0,
             'website_notes': ''
@@ -74,20 +78,58 @@ def process_products(bot, analyzer, notifier, products):
         if is_target:
             print("  >>> TARGET FOUND! Sending to Telegram...", flush=True)
             
+            # Format makers info
+            makers_text = ""
+            for i, maker in enumerate(lead_data['makers'], 1):
+                makers_text += f"\n**Maker {i}:** {maker['name']}"
+                if maker.get('profile_url'):
+                    makers_text += f"\n  - Product Hunt: {maker['profile_url']}"
+                if maker.get('twitter'):
+                    makers_text += f"\n  - Twitter: {maker['twitter']}"
+                if maker.get('linkedin'):
+                    makers_text += f"\n  - LinkedIn: {maker['linkedin']}"
+                if maker.get('website'):
+                    makers_text += f"\n  - Website: {maker['website']}"
+                if maker.get('email'):
+                    makers_text += f"\n  - Email: {maker['email']}"
+                makers_text += "\n"
+            
+            # Build social links section
+            social_links = []
+            if lead_data.get('twitter'):
+                social_links.append(f"Twitter: {lead_data['twitter']}")
+            if lead_data.get('linkedin'):
+                social_links.append(f"LinkedIn: {lead_data['linkedin']}")
+            if lead_data.get('facebook'):
+                social_links.append(f"Facebook: {lead_data['facebook']}")
+            if lead_data.get('instagram'):
+                social_links.append(f"Instagram: {lead_data['instagram']}")
+            if lead_data.get('email'):
+                social_links.append(f"Email: {lead_data['email']}")
+            
+            social_text = "\n".join(social_links) if social_links else "No social links found"
+            
             # Format message for Telegram
             message = f"""
-🚀 **New Product Hunt Lead**
+🚀 **NEW LEAD - Product Hunt**
 
-**Product**: {lead_data['name']}
-**Tagline**: {lead_data['tagline']}
-**Product Hunt**: {lead_data['product_url']}
+**Product:** {lead_data['name']}
+**Tagline:** {lead_data['tagline']}
+**Product Hunt:** {lead_data['product_url']}
 
-**Makers**: {lead_data['makers']}
-**Twitter**: {lead_data.get('twitter') or 'N/A'}
+**📱 Product Social Links:**
+{social_text}
 
-**Website Status**: {lead_data['website_status']}
-**Website**: {lead_data.get('website') or 'None'}
-**Notes**: {lead_data['website_notes'] or 'No website found - perfect opportunity!'}
+**👥 Founders/Makers:**{makers_text}
+
+**🌐 Website Analysis:**
+**Status:** {lead_data['website_status']}
+**URL:** {lead_data.get('website') or 'None'}
+**Score:** {lead_data['website_score']}/100
+**Notes:** {lead_data['website_notes'] or 'No website - perfect opportunity to offer your services!'}
+
+---
+💡 **Action:** Contact the makers and offer website development services!
 """
             notifier.send_message(message)
             time.sleep(1)

@@ -120,7 +120,11 @@ class ProductHuntBot:
                 'description': '',
                 'website': None,
                 'makers': [],
-                'twitter': None
+                'twitter': None,
+                'linkedin': None,
+                'facebook': None,
+                'instagram': None,
+                'email': None
             }
             
             # Get product name
@@ -138,29 +142,91 @@ class ProductHuntBot:
             if website_elem:
                 details['website'] = website_elem.get_attribute('href')
             
-            # Get makers
+            # Get all social links
+            all_links = self.page.query_selector_all('a[href]')
+            for link in all_links:
+                href = link.get_attribute('href')
+                if not href:
+                    continue
+                    
+                # Twitter/X
+                if 'twitter.com' in href or 'x.com' in href:
+                    details['twitter'] = href
+                # LinkedIn
+                elif 'linkedin.com' in href:
+                    details['linkedin'] = href
+                # Facebook
+                elif 'facebook.com' in href:
+                    details['facebook'] = href
+                # Instagram
+                elif 'instagram.com' in href:
+                    details['instagram'] = href
+                # Email
+                elif href.startswith('mailto:'):
+                    details['email'] = href.replace('mailto:', '')
+            
+            # Get makers with their profiles
             maker_elements = self.page.query_selector_all('[data-test="makers-list"] a, .makers a')
             for maker_elem in maker_elements[:3]:  # Limit to 3 makers
                 maker_name = maker_elem.inner_text().strip()
                 maker_url = maker_elem.get_attribute('href')
                 if maker_url and not maker_url.startswith('http'):
                     maker_url = "https://www.producthunt.com" + maker_url
+                
+                # Get maker details
+                maker_info = self.get_maker_details(maker_url) if maker_url else {}
                     
                 details['makers'].append({
                     'name': maker_name,
-                    'profile_url': maker_url
+                    'profile_url': maker_url,
+                    'twitter': maker_info.get('twitter'),
+                    'linkedin': maker_info.get('linkedin'),
+                    'website': maker_info.get('website'),
+                    'email': maker_info.get('email')
                 })
-            
-            # Get Twitter link
-            twitter_elem = self.page.query_selector('a[href*="twitter.com"], a[href*="x.com"]')
-            if twitter_elem:
-                details['twitter'] = twitter_elem.get_attribute('href')
             
             return details
             
         except Exception as e:
             print(f"Error getting product details: {e}", flush=True)
             return None
+    
+    def get_maker_details(self, maker_url):
+        """Extract contact details from maker's profile"""
+        try:
+            self.page.goto(maker_url, wait_until="domcontentloaded")
+            time.sleep(random.uniform(1, 2))
+            
+            maker_info = {
+                'twitter': None,
+                'linkedin': None,
+                'website': None,
+                'email': None
+            }
+            
+            # Get all links from profile
+            all_links = self.page.query_selector_all('a[href]')
+            for link in all_links:
+                href = link.get_attribute('href')
+                if not href:
+                    continue
+                
+                if 'twitter.com' in href or 'x.com' in href:
+                    maker_info['twitter'] = href
+                elif 'linkedin.com' in href:
+                    maker_info['linkedin'] = href
+                elif href.startswith('mailto:'):
+                    maker_info['email'] = href.replace('mailto:', '')
+                elif href.startswith('http') and 'producthunt.com' not in href:
+                    # Likely personal website
+                    if not maker_info['website']:
+                        maker_info['website'] = href
+            
+            return maker_info
+            
+        except Exception as e:
+            print(f"Error getting maker details: {e}", flush=True)
+            return {}
     
     def close(self):
         """Close browser"""
